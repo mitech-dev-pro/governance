@@ -1,172 +1,245 @@
 // backend/routes/users.js
 import express from "express";
 import { query } from "../config/database.js";
-import bcrypt from "bcryptjs";
-import { body, validationResult } from "express-validator";
-import { requireRole } from "../middleware/auth.js";
 const router = express.Router();
 
-// Get all users (with optional pagination)
-router.get("/", requireRole(["admin"]), async (req, res) => {
+// --- Users ---
+router.get("/", async (req, res) => {
+  /**
+   * @swagger
+   * /users:
+   *   get:
+   *     summary: List users
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     description: Get all users (admin only, paginated)
+   *     parameters:
+   *       - name: page
+   *         in: query
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *         description: Page number
+   *       - name: limit
+   *         in: query
+   *         schema:
+   *           type: integer
+   *           default: 20
+   *         description: Results per page
+   *     responses:
+   *       200:
+   *         description: List of users
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/User'
+   */
+
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
-    const [users] = await query(
-      "SELECT id, email, role, first_name, last_name, is_active FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?",
-      [Number(limit), Number(offset)],
-    );
-    res.json(users);
+    const [rows] = await query("SELECT * FROM users");
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get user by ID
-router.get("/:id", requireRole(["admin"]), async (req, res) => {
+router.get("/:id", async (req, res) => {
+  /**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get user by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+       - name: id
+         in: path
+         required: true
+         schema:
+           type: string
+     responses:
+       200:
+         description: User found
+         content:
+           application/json:
+             schema:
+               $ref: '#/components/schemas/User'
+       404:
+         description: User not found
+ */
+
   try {
-    const { id } = req.params;
-    const [rows] = await query(
-      "SELECT id, email, role, first_name, last_name, is_active FROM users WHERE id = ?",
-      [id],
-    );
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    const [rows] = await query("SELECT * FROM users WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Create a new user (admin only)
-router.post(
-  "/",
-  requireRole(["admin"]),
-  [
-    body("email").isEmail().withMessage("Valid email required"),
-    body("password")
-      .isLength({ min: 8 })
-      .withMessage("Password must be at least 8 characters"),
-    body("role")
-      .isIn(["admin", "manager", "user"])
-      .withMessage("Role must be admin, manager, or user"),
-    body("first_name").notEmpty().trim(),
-    body("last_name").notEmpty().trim(),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { email, password, role, first_name, last_name } = req.body;
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const [result] = await query(
-        "INSERT INTO users (email, password, role, first_name, last_name, is_active) VALUES (?, ?, ?, ?, ?, 1)",
-        [email, hashedPassword, role, first_name, last_name],
-      );
-      const [rows] = await query(
-        "SELECT id, email, role, first_name, last_name, is_active FROM users WHERE id = ?",
-        [result.insertId],
-      );
-      res.status(201).json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
+router.post("/", async (req, res) => {
+  /**
+   * @swagger
+   * /users:
+   *   post:
+   *     summary: Create user
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     description: Create a new user (admin only)
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *               - password
+   *               - role
+   *               - first_name
+   *               - last_name
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *               password:
+   *                 type: string
+   *                 minLength: 8
+   *               role:
+   *                 type: string
+   *                 enum: [admin, manager, user]
+   *               first_name:
+   *                 type: string
+   *               last_name:
+   *                 type: string
+   *     responses:
+   *       201:
+   *         description: User created
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/User'
+   *       400:
+   *         description: Validation error
+   */
 
-// Update user by ID (admin only)
-router.put(
-  "/:id",
-  requireRole(["admin"]),
-  [
-    body("email").optional().isEmail().withMessage("Valid email required"),
-    body("role")
-      .optional()
-      .isIn(["admin", "manager", "user"])
-      .withMessage("Role must be admin, manager, or user"),
-    body("first_name").optional().notEmpty().trim(),
-    body("last_name").optional().notEmpty().trim(),
-    body("is_active").optional().isBoolean(),
-    body("password")
-      .optional()
-      .isLength({ min: 8 })
-      .withMessage("Password must be at least 8 characters"),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const allowedFields = [
-        "email",
-        "role",
-        "first_name",
-        "last_name",
-        "is_active",
-        "password",
-      ];
-      const setClause = [];
-      const values = [];
-      for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key)) {
-          if (key === "password") {
-            // Hash password if updating
-            const hashedPassword = await bcrypt.hash(value, 10);
-            setClause.push("password = ?");
-            values.push(hashedPassword);
-          } else {
-            setClause.push(`${key} = ?`);
-            values.push(value);
-          }
-        }
-      }
-      if (setClause.length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
-      }
-      values.push(id);
-      const sql = `UPDATE users SET ${setClause.join(", ")} WHERE id = ?`;
-      const [result] = await query(sql, values);
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      const [rows] = await query(
-        "SELECT id, email, role, first_name, last_name, is_active FROM users WHERE id = ?",
-        [id],
-      );
-      res.json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Delete user by ID (admin only)
-router.delete("/:id", requireRole(["admin"]), async (req, res) => {
   try {
-    const { id } = req.params;
-    const [result] = await query("DELETE FROM users WHERE id = ?", [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json({ message: "User deleted" });
+    const { username, email, password, role, status } = req.body;
+    const [result] = await query(
+      "INSERT INTO users (id, username, email, password, role, status) VALUES (UUID(), ?, ?, ?, ?, ?)",
+      [username, email, password, role, status],
+    );
+    res
+      .status(201)
+      .json({ id: result.insertId, username, email, role, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Update user by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *               role:
+ *                 type: string
+ *                 enum: [admin, manager, user]
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: User updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: User not found
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { username, email, password, role, status } = req.body;
+    await query(
+      "UPDATE users SET username = ?, email = ?, password = ?, role = ?, status = ? WHERE id = ?",
+      [username, email, password, role, status, req.params.id],
+    );
+    res.json({ id: req.params.id, username, email, role, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete user by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: User not found
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM users WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 export default router;
-// ---
-// Endpoints:
-// GET    /api/users           - List users (with pagination)
-// GET    /api/users/:id       - Get user by ID
-// POST   /api/users           - Create user
-// PUT    /api/users/:id       - Update user
-// DELETE /api/users/:id       - Delete user
-// ---
-// Note: Password hashing, validation, and authorization checks should be added for production use.

@@ -2,7 +2,231 @@ import express from "express";
 import { query } from "../config/database.js";
 const router = express.Router();
 
+// --- Reports ---
+/**
+ * @swagger
+ * /reports:
+ *   get:
+ *     summary: List reports
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Get all reports (paginated)
+ *     responses:
+ *       200:
+ *         description: List of reports
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get("/", async (req, res) => {
+  try {
+    const [rows] = await query("SELECT * FROM reports");
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /reports/{id}:
+ *   get:
+ *     summary: Get report by ID
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Report found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       404:
+ *         description: Report not found
+ */
+router.get("/:id", async (req, res) => {
+  try {
+    const [rows] = await query("SELECT * FROM reports WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /reports:
+ *   post:
+ *     summary: Create report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Create a new report
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Report created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Validation error
+ */
+router.post("/", async (req, res) => {
+  try {
+    const { name, type, content, status } = req.body;
+    const [result] = await query(
+      "INSERT INTO reports (id, name, type, content, status) VALUES (UUID(), ?, ?, ?, ?)",
+      [name, type, content, status],
+    );
+    res.status(201).json({ id: result.insertId, name, type, content, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /reports/{id}:
+ *   put:
+ *     summary: Update report by ID
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Report updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Report not found
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, type, content, status } = req.body;
+    await query(
+      "UPDATE reports SET name = ?, type = ?, content = ?, status = ? WHERE id = ?",
+      [name, type, content, status, req.params.id],
+    );
+    res.json({ id: req.params.id, name, type, content, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /reports/{id}:
+ *   delete:
+ *     summary: Delete report by ID
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Report deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Report not found
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM reports WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Risk Report
+/**
+ * @swagger
+ * /reports/risk-report:
+ *   get:
+ *     summary: Get risk report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns a risk report with risk details and treatment counts.
+ *     responses:
+ *       200:
+ *         description: Array of risk report entries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 router.get("/risk-report", async (req, res) => {
   try {
     const [rows] = await query(`
@@ -31,6 +255,25 @@ router.get("/risk-report", async (req, res) => {
 });
 
 // Asset Compliance Report
+/**
+ * @swagger
+ * /reports/asset-compliance:
+ *   get:
+ *     summary: Get asset compliance report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns an asset compliance report with linked and open risks.
+ *     responses:
+ *       200:
+ *         description: Array of asset compliance report entries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 router.get("/asset-compliance", async (req, res) => {
   try {
     const [rows] = await query(`
@@ -57,6 +300,23 @@ router.get("/asset-compliance", async (req, res) => {
 });
 
 // ISO 27001 Compliance Status
+/**
+ * @swagger
+ * /reports/iso-compliance:
+ *   get:
+ *     summary: Get ISO 27001 compliance status
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns ISO 27001 compliance status report.
+ *     responses:
+ *       200:
+ *         description: ISO 27001 compliance status object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
 router.get("/iso-compliance", async (req, res) => {
   try {
     const [details] = await query(`

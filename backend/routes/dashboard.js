@@ -2,7 +2,225 @@ import express from "express";
 import { query } from "../config/database.js";
 const router = express.Router();
 
+// --- Dashboard ---
+/**
+ * @swagger
+ * /dashboard:
+ *   get:
+ *     summary: List dashboard configs
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Get all dashboard configs (paginated)
+ *     responses:
+ *       200:
+ *         description: List of dashboard configs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get("/", async (req, res) => {
+  try {
+    const [rows] = await query("SELECT * FROM dashboard");
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /dashboard/{id}:
+ *   get:
+ *     summary: Get dashboard config by ID
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dashboard config found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       404:
+ *         description: Dashboard config not found
+ */
+router.get("/:id", async (req, res) => {
+  try {
+    const [rows] = await query("SELECT * FROM dashboard WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /dashboard:
+ *   post:
+ *     summary: Create dashboard config
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Create a new dashboard config
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               config:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Dashboard config created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Validation error
+ */
+router.post("/", async (req, res) => {
+  try {
+    const { name, config, status } = req.body;
+    const [result] = await query(
+      "INSERT INTO dashboard (id, name, config, status) VALUES (UUID(), ?, ?, ?)",
+      [name, config, status],
+    );
+    res.status(201).json({ id: result.insertId, name, config, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /dashboard/{id}:
+ *   put:
+ *     summary: Update dashboard config by ID
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               config:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Dashboard config updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Dashboard config not found
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, config, status } = req.body;
+    await query(
+      "UPDATE dashboard SET name = ?, config = ?, status = ? WHERE id = ?",
+      [name, config, status, req.params.id],
+    );
+    res.json({ id: req.params.id, name, config, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /dashboard/{id}:
+ *   delete:
+ *     summary: Delete dashboard config by ID
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dashboard config deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Dashboard config not found
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM dashboard WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get dashboard statistics
+/**
+ * @swagger
+ * /dashboard/stats:
+ *   get:
+ *     summary: Get dashboard statistics
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns various statistics for dashboard widgets.
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
 router.get("/stats", async (req, res) => {
   try {
     // MySQL does not support FILTER or WITH, so use SUM with CASE
@@ -35,6 +253,25 @@ router.get("/stats", async (req, res) => {
 });
 
 // Get risk distribution by level
+/**
+ * @swagger
+ * /dashboard/risk-distribution:
+ *   get:
+ *     summary: Get risk distribution by level
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns risk distribution grouped by risk level.
+ *     responses:
+ *       200:
+ *         description: Array of risk levels and counts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 router.get("/risk-distribution", async (req, res) => {
   try {
     const [rows] = await query(`
@@ -51,6 +288,25 @@ router.get("/risk-distribution", async (req, res) => {
 });
 
 // Get recent activity
+/**
+ * @swagger
+ * /dashboard/recent-activity:
+ *   get:
+ *     summary: Get recent activity
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns recent activity logs for the dashboard.
+ *     responses:
+ *       200:
+ *         description: Array of recent activity log entries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 router.get("/recent-activity", async (req, res) => {
   try {
     const [rows] = await query(`
@@ -80,6 +336,25 @@ router.get("/recent-activity", async (req, res) => {
 });
 
 // Get compliance overview
+/**
+ * @swagger
+ * /dashboard/compliance-overview:
+ *   get:
+ *     summary: Get compliance overview
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Returns compliance overview statistics for dashboard.
+ *     responses:
+ *       200:
+ *         description: Compliance overview statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 router.get("/compliance-overview", async (req, res) => {
   try {
     const [rows] = await query(`

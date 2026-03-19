@@ -1,153 +1,230 @@
 // backend/routes/roles.js
 import express from "express";
 import { query } from "../config/database.js";
-import { body, param, validationResult } from "express-validator";
 const router = express.Router();
 
-// Get all roles (with pagination)
+// --- Roles ---
+/**
+ * @swagger
+ * /roles:
+ *   get:
+ *     summary: List roles
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Get all roles (paginated)
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Results per page
+ *     responses:
+ *       200:
+ *         description: List of roles with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Role'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     total: { type: integer }
+ *                     totalPages: { type: integer }
+ */
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
-    const [roles] = await query(
-      "SELECT id, name, description FROM roles ORDER BY name LIMIT ? OFFSET ?",
-      [Number(limit), Number(offset)],
-    );
-    const [countRows] = await query("SELECT COUNT(*) as count FROM roles");
-    const total = countRows[0].count;
-    res.json({
-      roles,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    const [rows] = await query("SELECT * FROM roles");
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get role by ID
-router.get("/:id", [param("id").notEmpty().isInt()], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+/**
+ * @swagger
+ * /roles/{id}:
+ *   get:
+ *     summary: Get role by ID
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Role found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Role'
+ *       404:
+ *         description: Role not found
+ */
+router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [rows] = await query(
-      "SELECT id, name, description FROM roles WHERE id = ?",
-      [id],
-    );
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Role not found" });
-    }
+    const [rows] = await query("SELECT * FROM roles WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Create role
-router.post(
-  "/",
-  [
-    body("name").notEmpty().isString().isLength({ max: 50 }),
-    body("description").optional().isString().isLength({ max: 255 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { name, description } = req.body;
-      const [result] = await query(
-        "INSERT INTO roles (name, description) VALUES (?, ?)",
-        [name, description],
-      );
-      const [rows] = await query(
-        "SELECT id, name, description FROM roles WHERE id = ?",
-        [result.insertId],
-      );
-      res.status(201).json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Update role
-router.put(
-  "/:id",
-  [
-    param("id").notEmpty().isInt(),
-    body("name").optional().isString().isLength({ max: 50 }),
-    body("description").optional().isString().isLength({ max: 255 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const allowedFields = ["name", "description"];
-      const setClause = [];
-      const values = [];
-      for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key)) {
-          setClause.push(`${key} = ?`);
-          values.push(value);
-        }
-      }
-      if (setClause.length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
-      }
-      values.push(id);
-      const sql = `UPDATE roles SET ${setClause.join(", ")} WHERE id = ?`;
-      const [result] = await query(sql, values);
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "Role not found" });
-      }
-      const [rows] = await query(
-        "SELECT id, name, description FROM roles WHERE id = ?",
-        [id],
-      );
-      res.json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Delete role
-router.delete("/:id", [param("id").notEmpty().isInt()], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+/**
+ * @swagger
+ * /roles:
+ *   post:
+ *     summary: Create role
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Create a new role
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Role created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Role'
+ *       400:
+ *         description: Validation error
+ */
+router.post("/", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [result] = await query("DELETE FROM roles WHERE id = ?", [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Role not found" });
-    }
-    res.json({ message: "Role deleted" });
+    const { name, description, status } = req.body;
+    const [result] = await query(
+      "INSERT INTO roles (id, name, description, status) VALUES (UUID(), ?, ?, ?)",
+      [name, description, status],
+    );
+    res.status(201).json({ id: result.insertId, name, description, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /roles/{id}:
+ *   put:
+ *     summary: Update role by ID
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Role updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Role'
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Role not found
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, description, status } = req.body;
+    await query(
+      "UPDATE roles SET name = ?, description = ?, status = ? WHERE id = ?",
+      [name, description, status, req.params.id],
+    );
+    res.json({ id: req.params.id, name, description, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /roles/{id}:
+ *   delete:
+ *     summary: Delete role by ID
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Role deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Role not found
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM roles WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 export default router;
-// ---
-// Endpoints:
-// GET    /api/v1/roles           - List roles (with pagination)
-// GET    /api/v1/roles/:id       - Get role by ID
-// POST   /api/v1/roles           - Create role
-// PUT    /api/v1/roles/:id       - Update role
-// DELETE /api/v1/roles/:id       - Delete role
-// ---

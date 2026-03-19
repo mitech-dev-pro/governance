@@ -1,155 +1,230 @@
 // backend/routes/departments.js
 import express from "express";
 import { query } from "../config/database.js";
-import { body, param, validationResult } from "express-validator";
 const router = express.Router();
 
-// Get all departments (with pagination)
+// --- Departments ---
+/**
+ * @swagger
+ * /departments:
+ *   get:
+ *     summary: List departments
+ *     tags: [Departments]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Get all departments (paginated)
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Results per page
+ *     responses:
+ *       200:
+ *         description: List of departments with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 departments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Department'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     total: { type: integer }
+ *                     totalPages: { type: integer }
+ */
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
-    const [departments] = await query(
-      "SELECT id, name, description FROM departments ORDER BY name LIMIT ? OFFSET ?",
-      [Number(limit), Number(offset)],
-    );
-    const [countRows] = await query(
-      "SELECT COUNT(*) as count FROM departments",
-    );
-    const total = countRows[0].count;
-    res.json({
-      departments,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    const [rows] = await query("SELECT * FROM departments");
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get department by ID
-router.get("/:id", [param("id").notEmpty().isInt()], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+/**
+ * @swagger
+ * /departments/{id}:
+ *   get:
+ *     summary: Get department by ID
+ *     tags: [Departments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Department found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Department'
+ *       404:
+ *         description: Department not found
+ */
+router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [rows] = await query(
-      "SELECT id, name, description FROM departments WHERE id = ?",
-      [id],
-    );
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Department not found" });
-    }
+    const [rows] = await query("SELECT * FROM departments WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Create department
-router.post(
-  "/",
-  [
-    body("name").notEmpty().isString().isLength({ max: 100 }),
-    body("description").optional().isString().isLength({ max: 255 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { name, description } = req.body;
-      const [result] = await query(
-        "INSERT INTO departments (name, description) VALUES (?, ?)",
-        [name, description],
-      );
-      const [rows] = await query(
-        "SELECT id, name, description FROM departments WHERE id = ?",
-        [result.insertId],
-      );
-      res.status(201).json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Update department
-router.put(
-  "/:id",
-  [
-    param("id").notEmpty().isInt(),
-    body("name").optional().isString().isLength({ max: 100 }),
-    body("description").optional().isString().isLength({ max: 255 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const allowedFields = ["name", "description"];
-      const setClause = [];
-      const values = [];
-      for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key)) {
-          setClause.push(`${key} = ?`);
-          values.push(value);
-        }
-      }
-      if (setClause.length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
-      }
-      values.push(id);
-      const sql = `UPDATE departments SET ${setClause.join(", ")} WHERE id = ?`;
-      const [result] = await query(sql, values);
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "Department not found" });
-      }
-      const [rows] = await query(
-        "SELECT id, name, description FROM departments WHERE id = ?",
-        [id],
-      );
-      res.json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Delete department
-router.delete("/:id", [param("id").notEmpty().isInt()], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+/**
+ * @swagger
+ * /departments:
+ *   post:
+ *     summary: Create department
+ *     tags: [Departments]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Create a new department
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 255
+ *     responses:
+ *       201:
+ *         description: Department created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Department'
+ *       400:
+ *         description: Validation error
+ */
+router.post("/", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [result] = await query("DELETE FROM departments WHERE id = ?", [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Department not found" });
-    }
-    res.json({ message: "Department deleted" });
+    const { name, manager, status } = req.body;
+    const [result] = await query(
+      "INSERT INTO departments (id, name, manager, status) VALUES (UUID(), ?, ?, ?)",
+      [name, manager, status],
+    );
+    res.status(201).json({ id: result.insertId, name, manager, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /departments/{id}:
+ *   put:
+ *     summary: Update department by ID
+ *     tags: [Departments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 255
+ *     responses:
+ *       200:
+ *         description: Department updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Department'
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Department not found
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, manager, status } = req.body;
+    await query(
+      "UPDATE departments SET name = ?, manager = ?, status = ? WHERE id = ?",
+      [name, manager, status, req.params.id],
+    );
+    res.json({ id: req.params.id, name, manager, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /departments/{id}:
+ *   delete:
+ *     summary: Delete department by ID
+ *     tags: [Departments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Department deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Department not found
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM departments WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 export default router;
-// ---
-// Endpoints:
-// GET    /api/departments           - List departments (with pagination)
-// GET    /api/departments/:id       - Get department by ID
-// POST   /api/departments           - Create department
-// PUT    /api/departments/:id       - Update department
-// DELETE /api/departments/:id       - Delete department
-// ---

@@ -1,155 +1,230 @@
 // backend/routes/permissions.js
 import express from "express";
 import { query } from "../config/database.js";
-import { body, param, validationResult } from "express-validator";
 const router = express.Router();
 
-// Get all permissions (with pagination)
+// --- Permissions ---
+/**
+ * @swagger
+ * /permissions:
+ *   get:
+ *     summary: List permissions
+ *     tags: [Permissions]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Get all permissions (paginated)
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Results per page
+ *     responses:
+ *       200:
+ *         description: List of permissions with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 permissions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Permission'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     total: { type: integer }
+ *                     totalPages: { type: integer }
+ */
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
-    const [permissions] = await query(
-      "SELECT id, name, description FROM permissions ORDER BY name LIMIT ? OFFSET ?",
-      [Number(limit), Number(offset)],
-    );
-    const [countRows] = await query(
-      "SELECT COUNT(*) as count FROM permissions",
-    );
-    const total = countRows[0].count;
-    res.json({
-      permissions,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    const [rows] = await query("SELECT * FROM permissions");
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get permission by ID
-router.get("/:id", [param("id").notEmpty().isInt()], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+/**
+ * @swagger
+ * /permissions/{id}:
+ *   get:
+ *     summary: Get permission by ID
+ *     tags: [Permissions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Permission found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Permission'
+ *       404:
+ *         description: Permission not found
+ */
+router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [rows] = await query(
-      "SELECT id, name, description FROM permissions WHERE id = ?",
-      [id],
-    );
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Permission not found" });
-    }
+    const [rows] = await query("SELECT * FROM permissions WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Create permission
-router.post(
-  "/",
-  [
-    body("name").notEmpty().isString().isLength({ max: 50 }),
-    body("description").optional().isString().isLength({ max: 255 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { name, description } = req.body;
-      const [result] = await query(
-        "INSERT INTO permissions (name, description) VALUES (?, ?)",
-        [name, description],
-      );
-      const [rows] = await query(
-        "SELECT id, name, description FROM permissions WHERE id = ?",
-        [result.insertId],
-      );
-      res.status(201).json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Update permission
-router.put(
-  "/:id",
-  [
-    param("id").notEmpty().isInt(),
-    body("name").optional().isString().isLength({ max: 50 }),
-    body("description").optional().isString().isLength({ max: 255 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const allowedFields = ["name", "description"];
-      const setClause = [];
-      const values = [];
-      for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key)) {
-          setClause.push(`${key} = ?`);
-          values.push(value);
-        }
-      }
-      if (setClause.length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
-      }
-      values.push(id);
-      const sql = `UPDATE permissions SET ${setClause.join(", ")} WHERE id = ?`;
-      const [result] = await query(sql, values);
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "Permission not found" });
-      }
-      const [rows] = await query(
-        "SELECT id, name, description FROM permissions WHERE id = ?",
-        [id],
-      );
-      res.json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
-
-// Delete permission
-router.delete("/:id", [param("id").notEmpty().isInt()], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+/**
+ * @swagger
+ * /permissions:
+ *   post:
+ *     summary: Create permission
+ *     tags: [Permissions]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Create a new permission
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Permission created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Permission'
+ *       400:
+ *         description: Validation error
+ */
+router.post("/", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [result] = await query("DELETE FROM permissions WHERE id = ?", [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Permission not found" });
-    }
-    res.json({ message: "Permission deleted" });
+    const { name, description, status } = req.body;
+    const [result] = await query(
+      "INSERT INTO permissions (id, name, description, status) VALUES (UUID(), ?, ?, ?)",
+      [name, description, status],
+    );
+    res.status(201).json({ id: result.insertId, name, description, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /permissions/{id}:
+ *   put:
+ *     summary: Update permission by ID
+ *     tags: [Permissions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Permission updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Permission'
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Permission not found
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, description, status } = req.body;
+    await query(
+      "UPDATE permissions SET name = ?, description = ?, status = ? WHERE id = ?",
+      [name, description, status, req.params.id],
+    );
+    res.json({ id: req.params.id, name, description, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /permissions/{id}:
+ *   delete:
+ *     summary: Delete permission by ID
+ *     tags: [Permissions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Permission deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Permission not found
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM permissions WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 export default router;
-// ---
-// Endpoints:
-// GET    /api/v1/permissions           - List permissions (with pagination)
-// GET    /api/v1/permissions/:id       - Get permission by ID
-// POST   /api/v1/permissions           - Create permission
-// PUT    /api/v1/permissions/:id       - Update permission
-// DELETE /api/v1/permissions/:id       - Delete permission
-// ---

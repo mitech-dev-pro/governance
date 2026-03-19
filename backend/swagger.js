@@ -1,4 +1,6 @@
 import swaggerJSDoc from "swagger-jsdoc";
+
+import swaggerJSDoc from "swagger-jsdoc";
 const swaggerDefinition = {
   openapi: "3.0.0",
   info: {
@@ -12,15 +14,336 @@ const swaggerDefinition = {
       description: "Local development server",
     },
   ],
-  tags: [
-    { name: "Auth", description: "Authentication and registration endpoints" },
-    { name: "Users", description: "User management operations (admin only)" },
-    { name: "Upload", description: "File upload and download endpoints" },
-    { name: "Departments", description: "Department management endpoints" },
-    { name: "Assets", description: "Asset management endpoints" },
-    { name: "Audits", description: "Audit management endpoints" },
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+      },
+    },
+    schemas: {
+      User: {
+        type: "object",
+        properties: {
+          id: { type: "string", example: "1" },
+          email: { type: "string", format: "email", example: "user@example.com" },
+          role: { type: "string", example: "admin" },
+          first_name: { type: "string", example: "John" },
+          last_name: { type: "string", example: "Doe" },
+          is_active: { type: "boolean", example: true },
+        },
+      },
+      Department: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "IT" },
+          description: { type: "string", example: "Information Technology" },
+        },
+      },
+      Asset: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "Server 1" },
+          asset_tag: { type: "string", example: "SRV-001" },
+          type: { type: "string", example: "server" },
+          classification: { type: "string", example: "restricted" },
+          criticality: { type: "string", example: "high" },
+          status: { type: "string", example: "active" },
+          owner_id: { type: "string", example: "1" },
+          description: { type: "string", example: "Main application server" },
+          created_at: { type: "string", format: "date-time", example: "2024-01-01T12:00:00Z" },
+        },
+      },
+      Audit: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          type: { type: "string", example: "internal" },
+          status: { type: "string", example: "planned" },
+          start_date: { type: "string", format: "date", example: "2024-01-01" },
+          end_date: { type: "string", format: "date", example: "2024-01-10" },
+          lead_auditor_id: { type: "string", example: "2" },
+          description: { type: "string", example: "Annual internal audit" },
+        },
+      },
+      Permission: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "manage_users" },
+          description: { type: "string", example: "Can manage users" },
+        },
+      },
+      Role: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "admin" },
+          description: { type: "string", example: "Administrator role" },
+        },
+      },
+      Risk: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          risk_id: { type: "string", example: "RISK-001" },
+          title: { type: "string", example: "Data breach" },
+          risk_level: { type: "string", example: "critical" },
+          risk_score: { type: "number", example: 90 },
+          residual_risk_score: { type: "number", example: 40 },
+          status: { type: "string", example: "identified" },
+          treatment_strategy: { type: "string", example: "mitigate" },
+          asset_id: { type: "integer", example: 1 },
+          owner_id: { type: "string", example: "1" },
+          description: { type: "string", example: "Risk of unauthorized access" },
+          created_at: { type: "string", format: "date-time", example: "2024-01-01T12:00:00Z" },
+        },
+      },
+      GovernanceItem: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          title: { type: "string", example: "Access Control Policy" },
+          type: { type: "string", example: "policy" },
+          status: { type: "string", example: "active" },
+          category: { type: "string", example: "security" },
+          owner_id: { type: "string", example: "1" },
+          reviewer_id: { type: "string", example: "2" },
+          description: { type: "string", example: "Policy for access control" },
+          created_at: { type: "string", format: "date-time", example: "2024-01-01T12:00:00Z" },
+        },
+      },
+    },
+  },
+};
+
+const options = {
+  swaggerDefinition,
+  apis: [
+    "./routes/*.js", // Scan all route files for JSDoc comments
   ],
-  paths: {
+};
+
+const swaggerSpec = swaggerJSDoc(options);
+export default swaggerSpec;
+                        },
+                      ],
+                      pagination: {
+                        page: 1,
+                        limit: 20,
+                        total: 1,
+                        totalPages: 1,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/roles": {
+      get: {
+        tags: ["Roles"],
+        summary: "List roles",
+        description: "Get all roles (paginated)",
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", default: 1 },
+            description: "Page number",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 20 },
+            description: "Results per page",
+          },
+        ],
+        responses: {
+          200: {
+            description: "List of roles with pagination",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    roles: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/Role" },
+                    },
+                    pagination: {
+                      type: "object",
+                      properties: {
+                        page: { type: "integer" },
+                        limit: { type: "integer" },
+                        total: { type: "integer" },
+                        totalPages: { type: "integer" },
+                      },
+                    },
+                  },
+                },
+                examples: {
+                  example: {
+                    value: {
+                      roles: [
+                        {
+                          id: 1,
+                          name: "admin",
+                          description: "Administrator role",
+                        },
+                      ],
+                      pagination: {
+                        page: 1,
+                        limit: 20,
+                        total: 1,
+                        totalPages: 1,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/risks": {
+      get: {
+        tags: ["Risks"],
+        summary: "List risks",
+        description: "Get all risks with filters and risk matrix summary.",
+        parameters: [
+          {
+            name: "status",
+            in: "query",
+            schema: { type: "string" },
+            description: "Risk status filter",
+          },
+          {
+            name: "level",
+            in: "query",
+            schema: { type: "string" },
+            description: "Risk level filter",
+          },
+          {
+            name: "owner",
+            in: "query",
+            schema: { type: "string" },
+            description: "Owner ID filter",
+          },
+          {
+            name: "search",
+            in: "query",
+            schema: { type: "string" },
+            description: "Search term",
+          },
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", default: 1 },
+            description: "Page number",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 20 },
+            description: "Results per page",
+          },
+        ],
+        responses: {
+          200: {
+            description: "List of risks and risk matrix summary",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    risks: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/Risk" },
+                    },
+                    risk_matrix: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          likelihood: { type: "string" },
+                          impact: { type: "string" },
+                          count: { type: "integer" },
+                        },
+                      },
+                    },
+                  },
+                },
+                examples: {
+                  example: {
+                    value: {
+                      risks: [
+                        {
+                          id: 1,
+                          risk_id: "RISK-001",
+                          title: "Data breach",
+                          risk_level: "critical",
+                          risk_score: 90,
+                          residual_risk_score: 40,
+                          status: "identified",
+                          treatment_strategy: "mitigate",
+                          asset_id: 1,
+                          owner_id: "1",
+                          description: "Risk of unauthorized access",
+                          created_at: "2024-01-01T12:00:00Z",
+                        },
+                      ],
+                      risk_matrix: [
+                        { likelihood: "high", impact: "critical", count: 2 },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/reports/risk-report": {
+      get: {
+        tags: ["Reports"],
+        summary: "Get risk report",
+        description:
+          "Returns a risk report with risk details and treatment counts.",
+        responses: {
+          200: { description: "Array of risk report entries" },
+        },
+      },
+    },
+    "/reports/asset-compliance": {
+      get: {
+        tags: ["Reports"],
+        summary: "Get asset compliance report",
+        description:
+          "Returns an asset compliance report with linked and open risks.",
+        responses: {
+          200: { description: "Array of asset compliance report entries" },
+        },
+      },
+    },
+    "/reports/iso-compliance": {
+      get: {
+        tags: ["Reports"],
+        summary: "Get ISO 27001 compliance status",
+        description: "Returns ISO 27001 compliance status report.",
+        responses: {
+          200: { description: "ISO 27001 compliance status object" },
+        },
+      },
+    },
     "/audits": {
       get: {
         tags: ["Audits"],
@@ -174,6 +497,33 @@ const swaggerDefinition = {
                     },
                   },
                 },
+                examples: {
+                  example: {
+                    value: {
+                      assets: [
+                        {
+                          id: 1,
+                          name: "Server 1",
+                          asset_tag: "SRV-001",
+                          type: "server",
+                          classification: "restricted",
+                          criticality: "high",
+                          status: "active",
+                          owner_id: "1",
+                          description: "Main application server",
+                          created_at: "2024-01-01T12:00:00Z",
+                        },
+                      ],
+                      stats: {},
+                      pagination: {
+                        page: 1,
+                        limit: 20,
+                        total: 1,
+                        totalPages: 1,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -186,29 +536,6 @@ const swaggerDefinition = {
         tags: ["Auth"],
         summary: "User login",
         description: "Authenticate user and return JWT token.",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                required: ["email", "password"],
-                properties: {
-                  email: {
-                    type: "string",
-                    format: "email",
-                    example: "user@example.com",
-                  },
-                  password: {
-                    type: "string",
-                    format: "password",
-                    example: "yourpassword",
-                  },
-                },
-              },
-            },
-          },
-        },
         responses: {
           200: {
             description: "JWT token returned",
@@ -218,6 +545,11 @@ const swaggerDefinition = {
                   type: "object",
                   properties: {
                     token: { type: "string", example: "<jwt-token>" },
+                  },
+                },
+                examples: {
+                  example: {
+                    value: { token: "<jwt-token>" },
                   },
                 },
               },
@@ -291,6 +623,20 @@ const swaggerDefinition = {
                 schema: {
                   type: "array",
                   items: { $ref: "#/components/schemas/User" },
+                },
+                examples: {
+                  example: {
+                    value: [
+                      {
+                        id: "1",
+                        email: "user@example.com",
+                        role: "admin",
+                        first_name: "John",
+                        last_name: "Doe",
+                        is_active: true,
+                      },
+                    ],
+                  },
                 },
               },
             },
@@ -580,6 +926,25 @@ const swaggerDefinition = {
                     },
                   },
                 },
+                examples: {
+                  example: {
+                    value: {
+                      departments: [
+                        {
+                          id: 1,
+                          name: "IT",
+                          description: "Information Technology",
+                        },
+                      ],
+                      pagination: {
+                        page: 1,
+                        limit: 20,
+                        total: 1,
+                        totalPages: 1,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -702,20 +1067,113 @@ const swaggerDefinition = {
       User: {
         type: "object",
         properties: {
-          id: { type: "string" },
-          email: { type: "string", format: "email" },
-          role: { type: "string" },
-          first_name: { type: "string" },
-          last_name: { type: "string" },
-          is_active: { type: "boolean" },
+          id: { type: "string", example: "1" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "user@example.com",
+          },
+          role: { type: "string", example: "admin" },
+          first_name: { type: "string", example: "John" },
+          last_name: { type: "string", example: "Doe" },
+          is_active: { type: "boolean", example: true },
         },
       },
       Department: {
         type: "object",
         properties: {
-          id: { type: "integer" },
-          name: { type: "string" },
-          description: { type: "string" },
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "IT" },
+          description: { type: "string", example: "Information Technology" },
+        },
+      },
+      Asset: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "Server 1" },
+          asset_tag: { type: "string", example: "SRV-001" },
+          type: { type: "string", example: "server" },
+          classification: { type: "string", example: "restricted" },
+          criticality: { type: "string", example: "high" },
+          status: { type: "string", example: "active" },
+          owner_id: { type: "string", example: "1" },
+          description: { type: "string", example: "Main application server" },
+          created_at: {
+            type: "string",
+            format: "date-time",
+            example: "2024-01-01T12:00:00Z",
+          },
+        },
+      },
+      Audit: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          type: { type: "string", example: "internal" },
+          status: { type: "string", example: "planned" },
+          start_date: { type: "string", format: "date", example: "2024-01-01" },
+          end_date: { type: "string", format: "date", example: "2024-01-10" },
+          lead_auditor_id: { type: "string", example: "2" },
+          description: { type: "string", example: "Annual internal audit" },
+        },
+      },
+      Permission: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "manage_users" },
+          description: { type: "string", example: "Can manage users" },
+        },
+      },
+      Role: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "admin" },
+          description: { type: "string", example: "Administrator role" },
+        },
+      },
+      Risk: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          risk_id: { type: "string", example: "RISK-001" },
+          title: { type: "string", example: "Data breach" },
+          risk_level: { type: "string", example: "critical" },
+          risk_score: { type: "number", example: 90 },
+          residual_risk_score: { type: "number", example: 40 },
+          status: { type: "string", example: "identified" },
+          treatment_strategy: { type: "string", example: "mitigate" },
+          asset_id: { type: "integer", example: 1 },
+          owner_id: { type: "string", example: "1" },
+          description: {
+            type: "string",
+            example: "Risk of unauthorized access",
+          },
+          created_at: {
+            type: "string",
+            format: "date-time",
+            example: "2024-01-01T12:00:00Z",
+          },
+        },
+      },
+      GovernanceItem: {
+        type: "object",
+        properties: {
+          id: { type: "integer", example: 1 },
+          title: { type: "string", example: "Access Control Policy" },
+          type: { type: "string", example: "policy" },
+          status: { type: "string", example: "active" },
+          category: { type: "string", example: "security" },
+          owner_id: { type: "string", example: "1" },
+          reviewer_id: { type: "string", example: "2" },
+          description: { type: "string", example: "Policy for access control" },
+          created_at: {
+            type: "string",
+            format: "date-time",
+            example: "2024-01-01T12:00:00Z",
+          },
         },
       },
     },

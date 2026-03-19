@@ -1,4 +1,4 @@
-// backend/server.js
+// backend/index.js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -20,13 +20,28 @@ import dashboardRoutes from "./routes/dashboard.js";
 import rolesRoutes from "./routes/roles.js";
 import permissionsRoutes from "./routes/permissions.js";
 import uploadRoutes from "./routes/upload.js";
+import vendorsRoutes from "./routes/vendors.js";
+import departmentsRoutes from "./routes/departments.js";
+import incidentsRoutes from "./routes/incidents.js";
+import soaRoutes from "./routes/soa.js";
+import controlTestsRoutes from "./routes/controlTests.js";
+import controlMonitoringRoutes from "./routes/controlMonitoring.js";
+import complianceRoutes from "./routes/compliance.js";
+import trainingRoutes from "./routes/training.js";
+import evidenceRoutes from "./routes/evidence.js";
+import workflowAutomationRoutes from "./routes/workflowAutomation.js";
+import integrationsRoutes from "./routes/integrations.js";
+
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authenticateToken } from "./middleware/auth.js";
+import { query } from "./config/database.js";
+import { initDatabase } from "./config/initDatabase.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
 // Upload route (protected)
 app.use("/api/v1/upload", authenticateToken, uploadRoutes);
 
@@ -62,7 +77,6 @@ app.get("/health", (req, res) => {
 });
 
 // Database health check
-import { query } from "./config/database.js";
 app.get("/api/v1/db-health", async (req, res) => {
   try {
     const [rows] = await query("SELECT 1 AS db_status");
@@ -91,6 +105,25 @@ app.use("/api/v1/reports", authenticateToken, reportRoutes);
 app.use("/api/v1/dashboard", authenticateToken, dashboardRoutes);
 app.use("/api/v1/roles", authenticateToken, rolesRoutes);
 app.use("/api/v1/permissions", authenticateToken, permissionsRoutes);
+app.use("/api/v1/vendors", authenticateToken, vendorsRoutes);
+app.use("/api/v1/departments", authenticateToken, departmentsRoutes);
+app.use("/api/v1/incidents", authenticateToken, incidentsRoutes);
+app.use("/api/v1/soa", authenticateToken, soaRoutes);
+app.use("/api/v1/control-tests", authenticateToken, controlTestsRoutes);
+app.use(
+  "/api/v1/control-monitoring",
+  authenticateToken,
+  controlMonitoringRoutes,
+);
+app.use("/api/v1/compliance", authenticateToken, complianceRoutes);
+app.use("/api/v1/training", authenticateToken, trainingRoutes);
+app.use("/api/v1/evidence", authenticateToken, evidenceRoutes);
+app.use(
+  "/api/v1/workflow-automation",
+  authenticateToken,
+  workflowAutomationRoutes,
+);
+app.use("/api/v1/integrations", authenticateToken, integrationsRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
@@ -105,6 +138,19 @@ app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-app.listen(PORT, () => {
-  console.log(`ISMS Backend running on port ${PORT}`);
-});
+async function startServer() {
+  try {
+    await initDatabase();
+
+    app.listen(PORT, () => {
+      logger.info(`ISMS Backend running on port ${PORT}`);
+      console.log(`ISMS Backend running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error(`Failed to start server: ${error.message}`);
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  }
+}
+
+startServer();
