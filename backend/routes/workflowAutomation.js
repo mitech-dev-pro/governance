@@ -3,6 +3,32 @@ import { query } from "../config/database.js";
 const router = express.Router();
 
 // --- Workflow Automation ---
+/**
+ * @swagger
+ * /workflow-automation:
+ *   get:
+ *     summary: Get all workflow automations
+ *     tags:
+ *       - Workflow Automation
+ *     responses:
+ *       200:
+ *         description: List of workflow automations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WorkflowAutomation'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.get("/", async (req, res) => {
   try {
     const [rows] = await query("SELECT * FROM workflow_automation");
@@ -12,6 +38,46 @@ router.get("/", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /workflow-automation/{id}:
+ *   get:
+ *     summary: Get a workflow automation by ID
+ *     tags:
+ *       - Workflow Automation
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Workflow automation ID
+ *     responses:
+ *       200:
+ *         description: Workflow automation found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkflowAutomation'
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.get("/:id", async (req, res) => {
   try {
     const [rows] = await query(
@@ -25,6 +91,36 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /workflow-automation:
+ *   post:
+ *     summary: Create a new workflow automation
+ *     tags:
+ *       - Workflow Automation
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WorkflowAutomationInput'
+ *     responses:
+ *       201:
+ *         description: Workflow automation created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkflowAutomation'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.post("/", async (req, res) => {
   try {
     const { name, config, status } = req.body;
@@ -38,6 +134,43 @@ router.post("/", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /workflow-automation/{id}:
+ *   put:
+ *     summary: Update a workflow automation
+ *     tags:
+ *       - Workflow Automation
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Workflow automation ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WorkflowAutomationInput'
+ *     responses:
+ *       200:
+ *         description: Workflow automation updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkflowAutomation'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.put("/:id", async (req, res) => {
   try {
     const { name, config, status } = req.body;
@@ -51,6 +184,40 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /workflow-automation/{id}:
+ *   delete:
+ *     summary: Delete a workflow automation
+ *     tags:
+ *       - Workflow Automation
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Workflow automation ID
+ *     responses:
+ *       200:
+ *         description: Workflow automation deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.delete("/:id", async (req, res) => {
   try {
     await query("DELETE FROM workflow_automation WHERE id = ?", [

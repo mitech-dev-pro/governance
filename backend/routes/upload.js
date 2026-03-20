@@ -37,7 +37,84 @@ const upload = multer({
   },
 });
 
-// Upload endpoint (for asset, governance, compliance documents)
+/**
+ * @swagger
+ * /upload:
+ *   post:
+ *     summary: Upload a file (asset, governance, compliance, etc.)
+ *     description: Upload a file and associate it with an entity. Only PDF, JPEG, PNG, DOC, and DOCX files up to 10MB are allowed.
+ *     tags:
+ *       - Upload
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: The file to upload
+ *               entity_type:
+ *                 type: string
+ *                 description: The type of entity the file is related to (e.g., asset, governance, compliance)
+ *               entity_id:
+ *                 type: string
+ *                 description: The ID of the related entity
+ *               title:
+ *                 type: string
+ *                 description: Optional file title
+ *               description:
+ *                 type: string
+ *                 description: Optional file description
+ *               category:
+ *                 type: string
+ *                 description: Optional file category
+ *     responses:
+ *       201:
+ *         description: File uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 file:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     path:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                     size:
+ *                       type: integer
+ *       400:
+ *         description: Invalid file or validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.post("/", authenticateToken, upload.single("file"), async (req, res) => {
   try {
     const { entity_type, entity_id, title, description, category } = req.body;
@@ -83,7 +160,50 @@ router.post("/", authenticateToken, upload.single("file"), async (req, res) => {
   }
 });
 
-// Download endpoint
+/**
+ * @swagger
+ * /upload/{id}/download:
+ *   get:
+ *     summary: Download a file by ID
+ *     description: Download a file previously uploaded and associated with an entity.
+ *     tags:
+ *       - Upload
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The document ID
+ *     responses:
+ *       200:
+ *         description: File download
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: File not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.get("/:id/download", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
