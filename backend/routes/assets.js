@@ -67,7 +67,7 @@ router.get("/", async (req, res) => {
  *         in: path
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
  *     responses:
  *       200:
  *         description: Asset found
@@ -133,7 +133,7 @@ router.post("/", async (req, res) => {
   try {
     const { name, type, owner, value, status } = req.body;
     const [result] = await query(
-      "INSERT INTO assets (id, name, type, owner, value, status) VALUES (UUID(), ?, ?, ?, ?, ?)",
+      "INSERT INTO assets (name, type, owner, value, status) VALUES (?, ?, ?, ?, ?)",
       [name, type, owner, value, status],
     );
     res

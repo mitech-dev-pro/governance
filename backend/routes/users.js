@@ -133,7 +133,7 @@ router.post("/", async (req, res) => {
   try {
     const { username, email, password, role, status } = req.body;
     const [result] = await query(
-      "INSERT INTO users (id, username, email, password, role, status) VALUES (UUID(), ?, ?, ?, ?, ?)",
+      "INSERT INTO users (username, email, password, role, status) VALUES (?, ?, ?, ?, ?)",
       [username, email, password, role, status],
     );
     res

@@ -105,7 +105,7 @@ router.post("/", async (req, res) => {
   try {
     const { name, config, status } = req.body;
     const [result] = await query(
-      "INSERT INTO dashboard (id, name, config, status) VALUES (UUID(), ?, ?, ?)",
+      "INSERT INTO dashboard (name, config, status) VALUES (?, ?, ?)",
       [name, config, status],
     );
     res.status(201).json({ id: result.insertId, name, config, status });

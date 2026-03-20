@@ -9,9 +9,14 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: "http://localhost:{port}/api/v1",
+      url: "http://localhost:3000/api/v1",
       description: "Local development server",
     },
+    // If you serve Swagger UI from a different port, add it here
+    // {
+    //   url: "http://localhost:3000/api/v1",
+    //   description: "Swagger UI on frontend dev server",
+    // },
   ],
   components: {
     securitySchemes: {
@@ -25,7 +30,7 @@ const swaggerDefinition = {
       User: {
         type: "object",
         properties: {
-          id: { type: "string", example: "1" },
+          id: { type: "integer", example: 1 },
           email: {
             type: "string",
             format: "email",

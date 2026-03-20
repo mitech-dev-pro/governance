@@ -113,7 +113,7 @@ router.post("/", async (req, res) => {
      *         description: Validation error
      */
     const [resultInsert] = await query(
-      "INSERT INTO control_tests (id, control_id, test_type, frequency, result, status) VALUES (UUID(), ?, ?, ?, ?, ?)",
+      "INSERT INTO control_tests (control_id, test_type, frequency, result, status) VALUES (?, ?, ?, ?, ?)",
       [control_id, test_type, frequency, result, status],
     );
     res.status(201).json({

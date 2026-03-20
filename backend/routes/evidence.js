@@ -123,7 +123,7 @@ router.post("/", async (req, res) => {
       uploaded_by,
     } = req.body;
     const [result] = await query(
-      "INSERT INTO evidence (id, type, description, related_type, related_id, file_path, uploaded_by) VALUES (UUID(), ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO evidence (type, description, related_type, related_id, file_path, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)",
       [type, description, related_type, related_id, file_path, uploaded_by],
     );
     res.status(201).json({

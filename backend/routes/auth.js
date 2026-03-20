@@ -146,10 +146,9 @@ router.post(
         return res.status(409).json({ error: "Email already registered" });
       }
       const hash = await bcrypt.hash(password, 10);
-      const id = crypto.randomUUID();
       await query(
-        "INSERT INTO users (id, email, password_hash, first_name, last_name, department, is_active) VALUES (?, ?, ?, ?, ?, ?, true)",
-        [id, email, hash, first_name, last_name, department || null],
+        "INSERT INTO users (email, password_hash, first_name, last_name, department, is_active) VALUES (?, ?, ?, ?, ?, true)",
+        [email, hash, first_name, last_name, department || null],
       );
       res.status(201).json({ message: "User registered" });
     } catch (err) {

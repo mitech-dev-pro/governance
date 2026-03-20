@@ -117,7 +117,7 @@ router.post("/", async (req, res) => {
     const { control_code, name, description, type, status, owner_id } =
       req.body;
     const [result] = await query(
-      "INSERT INTO controls (id, control_code, name, description, type, status, owner_id) VALUES (UUID(), ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO controls (control_code, name, description, type, status, owner_id) VALUES (?, ?, ?, ?, ?, ?)",
       [control_code, name, description, type, status, owner_id],
     );
     res.status(201).json({

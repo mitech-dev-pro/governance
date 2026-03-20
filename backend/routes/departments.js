@@ -104,7 +104,7 @@ router.get("/:id", async (req, res) => {
  *       required: true
  *       content:
  *         application/json:
- *           schema:
+ *           type: integer
  *             type: object
  *             required:
  *               - name
@@ -129,7 +129,7 @@ router.post("/", async (req, res) => {
   try {
     const { name, manager, status } = req.body;
     const [result] = await query(
-      "INSERT INTO departments (id, name, manager, status) VALUES (UUID(), ?, ?, ?)",
+      "INSERT INTO departments (name, manager, status) VALUES (?, ?, ?)",
       [name, manager, status],
     );
     res.status(201).json({ id: result.insertId, name, manager, status });
@@ -149,7 +149,7 @@ router.post("/", async (req, res) => {
  *     parameters:
  *       - name: id
  *         in: path
- *         required: true
+ *           type: integer
  *         schema:
  *           type: integer
  *     requestBody:

@@ -31,7 +31,7 @@ import trainingRoutes from "./routes/training.js";
 import evidenceRoutes from "./routes/evidence.js";
 import workflowAutomationRoutes from "./routes/workflowAutomation.js";
 import integrationsRoutes from "./routes/integrations.js";
-
+import userRolesRoutes from "./routes/user_roles.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { query } from "./config/database.js";
@@ -47,9 +47,13 @@ app.use("/api/v1/upload", authenticateToken, uploadRoutes);
 
 // Security middleware
 app.use(helmet());
+// Allow CORS for Swagger UI and frontend
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "http://localhost:3000", // Allow Swagger UI if served from backend
+    ],
     credentials: true,
   }),
 );
@@ -124,6 +128,7 @@ app.use(
   workflowAutomationRoutes,
 );
 app.use("/api/v1/integrations", authenticateToken, integrationsRoutes);
+app.use("/api/v1/user_roles", authenticateToken, userRolesRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {

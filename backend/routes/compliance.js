@@ -44,7 +44,7 @@ router.get("/frameworks", async (req, res) => {
  *         in: path
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
  *     responses:
  *       200:
  *         description: Compliance framework found
@@ -104,7 +104,7 @@ router.post("/frameworks", async (req, res) => {
   try {
     const { name, description } = req.body;
     const [result] = await query(
-      "INSERT INTO compliance_frameworks (id, name, description) VALUES (UUID(), ?, ?)",
+      "INSERT INTO compliance_frameworks (name, description) VALUES (?, ?)",
       [name, description],
     );
     res.status(201).json({ id: result.insertId, name, description });
@@ -280,7 +280,7 @@ router.post("/frameworks/:frameworkId/mappings", async (req, res) => {
   try {
     const { control_id, mapping_notes } = req.body;
     const [result] = await query(
-      "INSERT INTO control_mappings (id, framework_id, control_id, mapping_notes) VALUES (UUID(), ?, ?, ?)",
+      "INSERT INTO control_mappings (framework_id, control_id, mapping_notes) VALUES (?, ?, ?)",
       [req.params.frameworkId, control_id, mapping_notes],
     );
     res.status(201).json({
@@ -409,7 +409,7 @@ router.post("/frameworks/:frameworkId/gap-assessments", async (req, res) => {
   try {
     const { gap_description, status } = req.body;
     const [result] = await query(
-      "INSERT INTO gap_assessments (id, framework_id, gap_description, status) VALUES (UUID(), ?, ?, ?)",
+      "INSERT INTO gap_assessments (framework_id, gap_description, status) VALUES (?, ?, ?)",
       [req.params.frameworkId, gap_description, status],
     );
     res.status(201).json({

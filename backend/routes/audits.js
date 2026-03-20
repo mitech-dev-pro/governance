@@ -67,7 +67,7 @@ router.get("/", async (req, res) => {
  *         in: path
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
  *     responses:
  *       200:
  *         description: Audit found
@@ -131,7 +131,7 @@ router.post("/", async (req, res) => {
   try {
     const { name, type, scope, status } = req.body;
     const [result] = await query(
-      "INSERT INTO audits (id, name, type, scope, status) VALUES (UUID(), ?, ?, ?, ?)",
+      "INSERT INTO audits (name, type, scope, status) VALUES (?, ?, ?, ?)",
       [name, type, scope, status],
     );
     res.status(201).json({ id: result.insertId, name, type, scope, status });

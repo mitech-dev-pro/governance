@@ -111,7 +111,7 @@ router.post("/", async (req, res) => {
   try {
     const { control_id, monitoring_type, frequency, status } = req.body;
     const [result] = await query(
-      "INSERT INTO control_monitoring (id, control_id, monitoring_type, frequency, status) VALUES (UUID(), ?, ?, ?, ?)",
+      "INSERT INTO control_monitoring (control_id, monitoring_type, frequency, status) VALUES (?, ?, ?, ?)",
       [control_id, monitoring_type, frequency, status],
     );
     res.status(201).json({
