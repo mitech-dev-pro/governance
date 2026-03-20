@@ -166,5 +166,5 @@ backend/
 
 ## Authors & License
 - Developed by Andrew Laryea
-- © 2026 ISMS Governance. All rights reserved.
+- © 2026 milife ISMS Governance. All rights reserved.
 - Licensed under the MIT License.
