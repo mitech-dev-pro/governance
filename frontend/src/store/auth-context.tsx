@@ -1,0 +1,110 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { getCurrentUser, loginUser } from "@/services/auth.service";
+import { LoginPayload, User } from "@/types/auth";
+import { getToken, removeToken, setToken } from "@/lib/auth-token";
+
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (payload: LoginPayload) => Promise<void>;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refreshUser = useCallback(async () => {
+    const storedToken = getToken();
+
+    if (!storedToken) {
+      setUser(null);
+      setTokenState(null);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setTokenState(storedToken);
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch {
+      removeToken();
+      setUser(null);
+      setTokenState(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  const login = useCallback(async (payload: LoginPayload) => {
+    const data = await loginUser(payload);
+    setToken(data.token);
+    setTokenState(data.token);
+    setUser(data.user);
+  }, []);
+
+  const logout = useCallback(() => {
+    removeToken();
+    setUser(null);
+    setTokenState(null);
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      isLoading,
+      login,
+      logout,
+      refreshUser,
+    }),
+    [user, token, isLoading, login, logout, refreshUser],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
+  return context;
+}
+
+/*
+What this does:
+Provides a React context for authentication state, including user info and JWT token.
+On app load, it checks for an existing token and fetches the current user.
+Provides login and logout functions that update the context and localStorage.
+Usage:
+Wrap your app with <AuthProvider> in _app.tsx.
+Use the useAuth() hook in any component to access auth state and functions.
+*/

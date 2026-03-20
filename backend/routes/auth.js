@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { query } from "../config/database.js";
 import { body, validationResult } from "express-validator";
+import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ const router = express.Router();
  *                 minLength: 8
  *     responses:
  *       200:
- *         description: JWT token returned
+ *         description: JWT token and user information returned
  *         content:
  *           application/json:
  *             schema:
@@ -41,6 +42,15 @@ const router = express.Router();
  *                 token:
  *                   type: string
  *                   example: <jwt-token>
+ *                user:
+ *                  type: object
+ *                  properties:
+ *                    email:
+ *                      type: string
+ *                      example: user@example.com
+ *                    first_name:
+ *                      type: string
+ *                      example: Andrew
  *       400:
  *         description: Validation error
  *       401:
@@ -75,12 +85,55 @@ router.post(
         process.env.JWT_SECRET || "your-secret-key",
         { expiresIn: "8h" },
       );
-      res.json({ token });
+      res.json({
+        token,
+        user: {
+          email: user.email,
+          first_name: user.first_name,
+        },
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   },
 );
+
+//Get current user endpoint
+//Requires authentication (JWT).Extracts the user ID from the JWT.Looks up the user in the database.Returns the full user object (matching your User interface).
+
+/**
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: Get current user details
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/me", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId; // set by auth middleware
+    const [users] = await query(
+      "SELECT id, email, first_name, last_name, role, department, is_active FROM users WHERE id = ?",
+      [userId],
+    );
+    if (!users.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(users[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // (Optional) POST /api/v1/auth/register
 // Uncomment to allow registration

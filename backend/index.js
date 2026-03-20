@@ -51,7 +51,7 @@ app.use(helmet());
 app.use(
   cors({
     origin: [
-      process.env.FRONTEND_URL || "http://localhost:3000",
+      process.env.FRONTEND_URL || "http://localhost:3001",
       "http://localhost:3000", // Allow Swagger UI if served from backend
     ],
     credentials: true,
@@ -101,6 +101,8 @@ app.use("/api/v1/auth", authRoutes);
 
 // Protected routes
 app.use("/api/v1/users", authenticateToken, userRoutes);
+app.use("/api/v1/users/me", authenticateToken, authRoutes); // For /users/me endpoint
+app.use("/api/v1/user_roles", authenticateToken, userRolesRoutes);
 app.use("/api/v1/governance", authenticateToken, governanceRoutes);
 app.use("/api/v1/assets", authenticateToken, assetRoutes);
 app.use("/api/v1/risks", authenticateToken, riskRoutes);
@@ -128,7 +130,6 @@ app.use(
   workflowAutomationRoutes,
 );
 app.use("/api/v1/integrations", authenticateToken, integrationsRoutes);
-app.use("/api/v1/user_roles", authenticateToken, userRolesRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
