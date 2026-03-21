@@ -34,5 +34,5 @@ export default function ProtectedRoute({
 }
 
 /*
-This component checks the user's authentication status using the useAuth hook. If the user is not authenticated and the authentication status has finished loading, it redirects them to the /login page. While the authentication status is loading, it displays a loading message. If the user is authenticated, it renders the child components passed to it.
+This component checks if the user is authenticated. If not, it redirects to the login page. While the authentication status is being determined, it shows a loading state. Once authenticated, it renders the child components (the protected content).
 */

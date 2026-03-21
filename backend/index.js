@@ -101,7 +101,7 @@ app.use("/api/v1/auth", authRoutes);
 
 // Protected routes
 app.use("/api/v1/users", authenticateToken, userRoutes);
-app.use("/api/v1/users/me", authenticateToken, authRoutes); // For /users/me endpoint
+app.use("/api/v1/auth/me", authenticateToken, authRoutes); // For /auth/me endpoint
 app.use("/api/v1/user_roles", authenticateToken, userRolesRoutes);
 app.use("/api/v1/governance", authenticateToken, governanceRoutes);
 app.use("/api/v1/assets", authenticateToken, assetRoutes);

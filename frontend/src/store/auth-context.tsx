@@ -58,9 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (payload: LoginPayload) => {
     const data = await loginUser(payload);
+
     setToken(data.token);
     setTokenState(data.token);
-    setUser(data.user);
+
+    const currentUser = await getCurrentUser();
+    setUser(currentUser);
   }, []);
 
   const logout = useCallback(() => {
@@ -98,13 +101,3 @@ export function useAuth() {
 
   return context;
 }
-
-/*
-What this does:
-Provides a React context for authentication state, including user info and JWT token.
-On app load, it checks for an existing token and fetches the current user.
-Provides login and logout functions that update the context and localStorage.
-Usage:
-Wrap your app with <AuthProvider> in _app.tsx.
-Use the useAuth() hook in any component to access auth state and functions.
-*/

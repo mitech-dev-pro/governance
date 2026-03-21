@@ -7,7 +7,7 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
 }
 
 export async function getCurrentUser(): Promise<User> {
-  const { data } = await api.get("/users/me");
+  const { data } = await api.get("/auth/me");
   return data;
 }
 

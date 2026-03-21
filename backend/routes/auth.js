@@ -7,6 +7,83 @@ import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
+//Get current user endpoint
+//Requires authentication (JWT).Extracts the user ID from the JWT.Looks up the user in the database.Returns the full user object (matching your User interface).
+//  GET /api/v1/auth/me
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user details
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/me", authenticateToken, async (req, res) => {
+  try {
+    // console.log("[auth/me] req.user object:", req.user);
+    const userId = req.user.id;
+    // console.log("[auth/me] userId from JWT:", userId);
+
+    const [users] = await query(
+      `
+      SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.department,
+        u.is_active,
+        r.id AS role_id,
+        r.name AS role_name,
+        r.type AS role_type
+      FROM users u
+      LEFT JOIN user_roles ur ON ur.user_id = u.id
+      LEFT JOIN roles r ON r.id = ur.role_id
+      WHERE u.id = ?
+      `,
+      [userId],
+    );
+
+    // console.log("[auth/me] DB query result:", users);
+
+    if (!users.length) {
+      console.warn(`[auth/me] No user found for userId: ${userId}`);
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const baseUser = {
+      id: users[0].id,
+      email: users[0].email,
+      first_name: users[0].first_name,
+      last_name: users[0].last_name,
+      department: users[0].department,
+      is_active: users[0].is_active,
+      roles: users
+        .filter((row) => row.role_id)
+        .map((row) => ({
+          id: row.role_id,
+          name: row.role_name,
+          type: row.role_type,
+        })),
+    };
+
+    res.json(baseUser);
+  } catch (err) {
+    console.error("[auth/me] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/v1/auth/login
 /**
  * @swagger
@@ -14,7 +91,7 @@ const router = express.Router();
  *   post:
  *     summary: User login
  *     tags: [Auth]
- *     description: Authenticate user and return JWT token.
+ *     description: Authenticate user and return JWT token and user object.
  *     requestBody:
  *       required: true
  *       content:
@@ -33,7 +110,7 @@ const router = express.Router();
  *                 minLength: 8
  *     responses:
  *       200:
- *         description: JWT token and user information returned
+ *         description: JWT token and user object returned
  *         content:
  *           application/json:
  *             schema:
@@ -42,15 +119,8 @@ const router = express.Router();
  *                 token:
  *                   type: string
  *                   example: <jwt-token>
- *                user:
- *                  type: object
- *                  properties:
- *                    email:
- *                      type: string
- *                      example: user@example.com
- *                    first_name:
- *                      type: string
- *                      example: Andrew
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       400:
  *         description: Validation error
  *       401:
@@ -87,53 +157,13 @@ router.post(
       );
       res.json({
         token,
-        user: {
-          email: user.email,
-          first_name: user.first_name,
-        },
+        user, // returns the whole user object
       });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   },
 );
-
-//Get current user endpoint
-//Requires authentication (JWT).Extracts the user ID from the JWT.Looks up the user in the database.Returns the full user object (matching your User interface).
-
-/**
- * @swagger
- * /users/me:
- *   get:
- *     summary: Get current user details
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       401:
- *         description: Unauthorized
- */
-router.get("/me", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId; // set by auth middleware
-    const [users] = await query(
-      "SELECT id, email, first_name, last_name, role, department, is_active FROM users WHERE id = ?",
-      [userId],
-    );
-    if (!users.length) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(users[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // (Optional) POST /api/v1/auth/register
 // Uncomment to allow registration

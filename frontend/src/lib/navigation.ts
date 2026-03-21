@@ -1,0 +1,31 @@
+import {
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
+  Boxes,
+  Briefcase,
+  ClipboardCheck,
+  FileText,
+ FolderOpen,
+  LayoutDashboard,
+  Settings,
+  ShieldCheck,
+  Siren,
+  BadgeCheck,
+} from "lucide-react";
+
+export const navigationItems = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Governance", href: "/governance", icon: FileText },
+  { label: "Assets", href: "/assets", icon: Boxes },
+  { label: "Risks", href: "/risks", icon: AlertTriangle },
+  { label: "Controls", href: "/controls", icon: ShieldCheck },
+  { label: "Audits", href: "/audits", icon: ClipboardCheck },
+  { label: "Incidents", href: "/incidents", icon: Siren },
+  { label: "Vendors", href: "/vendors", icon: Briefcase },
+  { label: "Compliance", href: "/compliance", icon: BadgeCheck },
+  { label: "Training", href: "/training", icon: BookOpen },
+  { label: "Documents", href: "/documents", icon: FolderOpen },
+  { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Settings", href: "/settings", icon: Settings },
+];
